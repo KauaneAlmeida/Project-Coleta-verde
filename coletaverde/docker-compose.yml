@@ -1,0 +1,49 @@
+networks:
+  vpn-coletaverde:
+    driver: bridge
+
+volumes:
+  data-volume:
+  coletaverde:
+    name: drive-coletaverde
+  oracle-data:
+    name: oracle-data
+
+services:
+
+  db:
+    image: 'gvenzl/oracle-xe:latest'
+    environment:
+      ORACLE_PASSWORD: 080802
+      ORACLE_USER: RM99741
+      ORACLE_DB: coletaverde
+    ports:
+      - "1521:1521"
+    volumes:
+      - "oracle-data:/opt/oracle/oradata"
+    networks:
+      - vpn-coletaverde
+
+  coletaverde-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: coletaverde:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:oracle:thin:@//db:1521/xe
+      SPRING_DATASOURCE_USERNAME: RM99741
+      SPRING_DATASOURCE_PASSWORD: 080802
+    volumes:
+      - data-volume:/app/data
+    networks:
+      - vpn-coletaverde
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://db:1521"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: always
